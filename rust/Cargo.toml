@@ -1,0 +1,22 @@
+[package]
+name = "resound_music"
+version = "0.1.0"
+edition = "2021"
+description = "余音 Resound 音乐核心：网易云 API + 歌词解析（UniFFI 桥接 Kotlin）"
+
+[lib]
+name = "resound_music"
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+# 语言桥接（UniFFI 自动生成 Kotlin bindings + JNI）
+uniffi = "0.32"
+# 网易云 API 网络请求（本骨架阶段暂未发起真实请求，仅供接口层就绪）
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "blocking"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+parking_lot = "0.12"
+
+[build-dependencies]
+uniffi = { version = "0.32", features = ["bindgen"] }

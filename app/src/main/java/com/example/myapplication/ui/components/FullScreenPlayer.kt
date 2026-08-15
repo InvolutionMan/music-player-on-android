@@ -8,6 +8,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
@@ -58,6 +59,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
+import com.example.myapplication.music.MusicRepository
 import com.example.myapplication.player.PlayMode
 import com.example.myapplication.player.PlayerState
 import com.example.myapplication.ui.icons.AppIcons
@@ -70,6 +72,7 @@ import com.example.myapplication.ui.theme.TabularStyle
 @Composable
 fun FullScreenPlayer(
     player: PlayerState,
+    repository: MusicRepository,
     progress: Animatable<Float, AnimationVector1D>,
     onDrag: (Float) -> Unit,
     onDragEnd: () -> Unit,
@@ -137,10 +140,11 @@ fun FullScreenPlayer(
                     .weight(1f)
                     .onGloballyPositioned { contentPos = it.positionInWindow() }
             ) {
-                // 歌词整体（淡入）：固定头部 + 歌词列表
+                // 歌词整体（淡入 + 轻微缩放，Apple Music 入场；规格 #二十五）
                 androidx.compose.animation.AnimatedVisibility(
                     visible = showLyrics,
-                    enter = fadeIn(tween(320)),
+                    enter = fadeIn(tween(320)) +
+                        scaleIn(initialScale = 0.98f, animationSpec = tween(320)),
                     exit = fadeOut(tween(200)),
                     modifier = Modifier.fillMaxSize()
                 ) {
@@ -177,6 +181,7 @@ fun FullScreenPlayer(
                         // 歌词列表（位于头部下方，不与其重叠）
                         LyricsView(
                             player = player,
+                            repository = repository,
                             modifier = Modifier.weight(1f).fillMaxWidth(),
                             onShowControls = { controlsVisible = it }
                         )

@@ -13,3 +13,5 @@
 .externalNativeBuild
 .cxx
 local.properties
+/rust/target
+/rust/Cargo.lock

@@ -15,7 +15,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val settings = remember { SettingsState() }
+            val settings = remember { SettingsState(this) }
 
             LaunchedEffect(settings.darkMode) {
                 val style = if (settings.darkMode) {

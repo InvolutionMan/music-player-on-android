@@ -55,6 +55,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.data.ResoundLibrary
 import com.example.myapplication.data.Track
+import com.example.myapplication.music.MusicRepository
+import com.example.myapplication.netease.NeteaseObserver
 import com.example.myapplication.player.PlayerState
 import com.example.myapplication.player.SettingsState
 import com.example.myapplication.ui.components.FloatingGlassBottomBar
@@ -75,9 +77,15 @@ private val AppTabs = listOf(
 /**
  * 应用主壳：Scaffold + 悬浮玻璃底部导航 + Apple Music 风格迷你播放器过渡。
  * 迷你播放器点击/上滑展开全屏播放器，主页随过渡缩放。
+ * 网易云在播时曲目数据由 PlayerState 统一填充，前端不变。
  */
 @Composable
-fun MainScreen(player: PlayerState, settings: SettingsState) {
+fun MainScreen(
+    player: PlayerState,
+    settings: SettingsState,
+    netease: NeteaseObserver,
+    musicRepository: MusicRepository,
+) {
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = remember { AppTabs }
     val density = LocalDensity.current
@@ -89,47 +97,57 @@ fun MainScreen(player: PlayerState, settings: SettingsState) {
 
     PlayerContainer(
         player = player,
+        musicRepository = musicRepository,
         miniPlayerBottomPadding = miniPlayerBottomPad,
         homeContent = {
-            Scaffold(
-                containerColor = Color.Transparent,
-                contentWindowInsets = WindowInsets(0, 0, 0, 0),
-                bottomBar = {
-                    FloatingGlassBottomBar(
-                        selectedIndex = selectedTab,
-                        tabs = tabs,
-                        onTabSelected = { selectedTab = it }
-                    )
-                }
-            ) { contentPadding ->
-                Box(modifier = Modifier.fillMaxSize()) {
-                    AnimatedContent(
-                        targetState = selectedTab,
-                        modifier = Modifier.fillMaxSize(),
-                        transitionSpec = {
-                            val dir = if (targetState > initialState) 1 else -1
-                            (fadeIn(animationSpec = tween(240, easing = FastOutSlowInEasing)) +
-                                slideInHorizontally(
-                                    animationSpec = spring(dampingRatio = 0.85f, stiffness = 380f)
-                                ) { it / 6 * dir }
-                            ).togetherWith(
-                                fadeOut(animationSpec = tween(160, easing = LinearEasing)) +
-                                    slideOutHorizontally(
-                                        animationSpec = tween(220, easing = FastOutSlowInEasing)
-                                    ) { -it / 10 * dir }
-                            ).using(SizeTransform(clip = false))
-                        },
-                        label = "tabContent"
-                    ) { tab ->
-                        when (tab) {
-                            0 -> HomeContent(player, statusTop, bottomPad)
-                            else -> SettingsScreen(settings = settings, bottomPadding = bottomPad)
+                Scaffold(
+                    containerColor = Color.Transparent,
+                    contentWindowInsets = WindowInsets(0, 0, 0, 0),
+                    bottomBar = {
+                        FloatingGlassBottomBar(
+                            selectedIndex = selectedTab,
+                            tabs = tabs,
+                            onTabSelected = { selectedTab = it }
+                        )
+                    }
+                ) { contentPadding ->
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        AnimatedContent(
+                            targetState = selectedTab,
+                            modifier = Modifier.fillMaxSize(),
+                            transitionSpec = {
+                                val dir = if (targetState > initialState) 1 else -1
+                                (fadeIn(animationSpec = tween(240, easing = FastOutSlowInEasing)) +
+                                    slideInHorizontally(
+                                        animationSpec = spring(dampingRatio = 0.85f, stiffness = 380f)
+                                    ) { it / 6 * dir }
+                                ).togetherWith(
+                                    fadeOut(animationSpec = tween(160, easing = LinearEasing)) +
+                                        slideOutHorizontally(
+                                            animationSpec = tween(220, easing = FastOutSlowInEasing)
+                                        ) { -it / 10 * dir }
+                                ).using(SizeTransform(clip = false))
+                            },
+                            label = "tabContent"
+                        ) { tab ->
+                            when (tab) {
+                                0 -> HomeContent(
+                                    player = player,
+                                    statusTop = statusTop,
+                                    bottomPad = bottomPad
+                                )
+                                else -> SettingsScreen(
+                                    settings = settings,
+                                    netease = netease,
+                                    repository = musicRepository,
+                                    bottomPadding = bottomPad
+                                )
+                            }
                         }
                     }
                 }
             }
-        }
-    )
+        )
 }
 
 // ---------------------------------------------------------------------------

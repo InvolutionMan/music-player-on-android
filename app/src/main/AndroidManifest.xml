@@ -2,6 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- 联网：ExoPlayer 播放流媒体 / Rust 网络层（网易云网关） -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 读取网易云 App 媒体会话（需用户在系统设置授予通知使用权） -->
+    <uses-permission android:name="android.permission.MEDIA_CONTENT_CONTROL" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -23,6 +28,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- 网易云接入：媒体会话监听（通知使用权） -->
+        <service
+            android:name=".netease.NeteaseListenerService"
+            android:exported="true"
+            android:label="@string/netease_listener_label"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>

@@ -1,5 +1,7 @@
 package com.example.myapplication.ui
 
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,9 +31,11 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,6 +49,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -54,6 +59,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.myapplication.music.MusicRepository
+import com.example.myapplication.netease.NeteaseObserver
+import com.example.myapplication.netease.localNetworks
 import com.example.myapplication.ui.components.GlassIconButton
 import com.example.myapplication.ui.components.IconTile
 import com.example.myapplication.ui.components.ScrollEdgeFade
@@ -61,13 +72,28 @@ import com.example.myapplication.ui.components.VerticalGlassScrollbar
 import com.example.myapplication.ui.components.glass
 import com.example.myapplication.ui.icons.AppIcons
 import com.example.myapplication.player.SettingsState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun SettingsScreen(
     settings: SettingsState,
+    netease: NeteaseObserver,
+    repository: MusicRepository,
     onBack: (() -> Unit)? = null,
     bottomPadding: Dp = 16.dp
 ) {
+    // 从系统通知使用权设置页返回后刷新授权状态
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) netease.refreshPermission()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -119,6 +145,14 @@ fun SettingsScreen(
                     SwitchRow(AppIcons.Lyrics, "歌词自动滚动", "当前句保持在可视区域中央", settings.lyricAutoScroll) { settings.lyricAutoScroll = it }
                     RowDivider()
                     FontStyleRow(settings.fontStyle) { settings.fontStyle = (settings.fontStyle + 1) % 3 }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                SettingsGroup("网易云接入") {
+                    NeteaseAccessRow(netease)
+                    RowDivider()
+                    GatewayUrlRow(settings, repository)
                 }
 
                 Spacer(Modifier.height(16.dp))
@@ -214,6 +248,169 @@ private fun SwitchRow(
                 disabledUncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
             )
         )
+    }
+}
+
+/** 网易云接入：通知使用权状态 + 跳转系统授权页 */
+@Composable
+private fun NeteaseAccessRow(netease: NeteaseObserver) {
+    val context = LocalContext.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
+            .padding(horizontal = 16.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconTile(AppIcons.MusicNote)
+        Spacer(Modifier.width(13.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "通知使用权",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = if (netease.permissionGranted) "已授权，可读取网易云正在播放" else "未授权，点击前往系统设置开启",
+                style = MaterialTheme.typography.labelSmall,
+                color = if (netease.permissionGranted) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.error,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Text(
+            text = if (netease.permissionGranted) "已开启" else "去开启",
+            style = MaterialTheme.typography.labelSmall,
+            color = if (netease.permissionGranted) MaterialTheme.colorScheme.onSurfaceVariant
+            else MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+/** 网易云 API 网关地址输入 + 局域网自动查找（NeteaseCloudMusicApi） */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GatewayUrlRow(settings: SettingsState, repository: MusicRepository) {
+    var isFocused by remember { mutableStateOf(false) }
+    val borderColor = if (isFocused) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.outlineVariant
+    val scope = rememberCoroutineScope()
+    var finding by remember { mutableStateOf(false) }
+    var findResult by remember { mutableStateOf<String?>(null) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 11.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconTile(AppIcons.RadioSignal)
+            Spacer(Modifier.width(13.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "API 网关地址",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "NeteaseCloudMusicApi 服务地址；模拟器 http://10.0.2.2:3000，真机可点下方自动查找",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(36.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                .border(1.dp, borderColor, RoundedCornerShape(10.dp))
+                .onFocusChanged { isFocused = it.isFocused }
+        ) {
+            BasicTextField(
+                value = settings.neteaseGatewayUrl,
+                onValueChange = { settings.neteaseGatewayUrl = it },
+                modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp),
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.onBackground
+                ),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                decorationBox = { innerTextField ->
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart) {
+                        if (settings.neteaseGatewayUrl.isEmpty()) {
+                            Text(
+                                text = "http://10.0.2.2:3000",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                        innerTextField()
+                    }
+                }
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = if (finding) "正在扫描局域网…" else "自动查找",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(enabled = !finding) {
+                        findResult = null
+                        finding = true
+                        scope.launch {
+                            val found = withContext(Dispatchers.IO) {
+                                var url: String? = null
+                                for ((ip, prefix) in localNetworks()) {
+                                    try {
+                                        url = repository.discoverGateway(ip, prefix, 3000, 2000)
+                                        if (url.isNotEmpty()) return@withContext url
+                                    } catch (_: Exception) {
+                                        // 该接口子网未找到，继续下一个
+                                    }
+                                }
+                                url
+                            }
+                            finding = false
+                            if (found != null) {
+                                settings.neteaseGatewayUrl = found
+                                findResult = "已找到：$found"
+                            } else {
+                                findResult = "未找到，请确认电脑已启动服务且与手机同一 Wi-Fi"
+                            }
+                        }
+                    }
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            )
+            findResult?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (it.startsWith("已找到")) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.error,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
     }
 }
 

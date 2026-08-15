@@ -44,6 +44,12 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    // Media3 / ExoPlayer：实际播放器（Kotlin 负责播放，Rust 只提供播放 URL）
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.common)
+    // UniFFI Kotlin bindings 依赖 JNA（aar 提供 Android 各 ABI 的 jnidispatch）
+    implementation("net.java.dev.jna:jna:5.15.0@aar")
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

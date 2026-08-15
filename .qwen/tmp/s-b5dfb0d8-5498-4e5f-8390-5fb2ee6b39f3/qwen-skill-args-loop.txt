@@ -1,0 +1,1 @@
+检查 logcat（tag LyricsView）是否出现 layoutReady 和 recenter 日志；若没有，提醒用户打开歌词页（点迷你播放器 → 查看歌词）后再检查；若已出现，分析 top/h/viewport/target 数值判断定位是否正确，并 dump UI 验证歌词位置是否居中。

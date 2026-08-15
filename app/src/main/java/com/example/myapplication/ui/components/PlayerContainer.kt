@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.myapplication.music.MusicRepository
 import com.example.myapplication.player.PlayerState
 import kotlinx.coroutines.launch
 
@@ -34,6 +35,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun PlayerContainer(
     player: PlayerState,
+    musicRepository: MusicRepository,
     miniPlayerBottomPadding: Dp = 24.dp,
     homeContent: @Composable () -> Unit,
     modifier: Modifier = Modifier
@@ -106,6 +108,7 @@ fun PlayerContainer(
             Box(modifier = Modifier.fillMaxSize()) {
                 FullScreenPlayer(
                     player = player,
+                    repository = musicRepository,
                     progress = progress,
                     onDrag = { amount -> onDrag(-amount) },
                     onDragEnd = { onDragEnd() }

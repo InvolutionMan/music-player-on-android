@@ -1,8 +1,35 @@
 package com.example.myapplication.data
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 
-data class LyricLine(val timeMs: Int, val text: String)
+/** 逐字歌词（卡拉OK）：一个字的时间范围与文本 */
+@Immutable
+data class LyricWord(
+    val startMs: Int,
+    val endMs: Int,
+    val text: String
+)
+
+@Immutable
+data class LyricLine(
+    val timeMs: Int,
+    /**
+     * 组内各行文本：双行歌词（同一时间轴节点）为 2 行；普通歌词为 1 行。
+     * 整个 Group 共享同一条时间轴：统一移动 / 高亮 / 反光，绝不拆成两条独立歌词。
+     */
+    val lines: List<String>,
+    /** 逐字时间轴（覆盖整个 Group 的拼接文本）；为空时按整组高亮（本地曲库 / 仅 LRC 的歌曲） */
+    val words: List<LyricWord> = emptyList()
+) {
+    /** 兼容单行场景：组内文本拼接（无分隔符） */
+    val text: String get() = lines.joinToString("")
+
+    /** 单行歌词便捷构造（等价 lines = listOf(text)） */
+    constructor(timeMs: Int, text: String, words: List<LyricWord> = emptyList()) :
+        this(timeMs, listOf(text), words)
+}
 
 data class Track(
     val title: String,
@@ -10,7 +37,9 @@ data class Track(
     val album: String,
     val durationSeconds: Int,
     val coverColors: List<Color>,
-    val lyrics: List<LyricLine>
+    val lyrics: List<LyricLine>,
+    /** 真实封面图（网易云等外部来源提供；为 null 时用 coverColors 渐变） */
+    val artwork: ImageBitmap? = null
 ) {
     val durationText: String
         get() = "%d:%02d".format(durationSeconds / 60, durationSeconds % 60)

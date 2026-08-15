@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">余音</string>
+    <string name="netease_listener_label">余音 · 网易云接入</string>
 </resources>

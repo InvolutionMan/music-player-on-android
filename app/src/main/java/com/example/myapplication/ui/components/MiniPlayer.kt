@@ -33,6 +33,7 @@ import com.example.myapplication.ui.icons.AppIcons
 /**
  * 迷你播放器。
  * 位于底部，展示当前曲目信息，点击/上滑展开全屏播放器。
+ * 网易云在播时数据由 PlayerState 统一填充（前端不变）。
  * 动画在 graphicsLayer draw 阶段读取 progress，不触发重组。
  */
 @OptIn(ExperimentalFoundationApi::class)

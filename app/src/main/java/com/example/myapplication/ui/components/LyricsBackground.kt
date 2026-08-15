@@ -47,8 +47,8 @@ fun LyricsBackground(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        // 整体降低亮度 / 透明度
-                        alpha = 0.72f
+                        // 完全不透明，彻底遮挡主页内容
+                        alpha = 1f
                         // 明显高斯模糊（仅 API 31+）
                         if (Build.VERSION.SDK_INT >= 31) {
                             renderEffect = AndroidRenderEffect.createBlurEffect(

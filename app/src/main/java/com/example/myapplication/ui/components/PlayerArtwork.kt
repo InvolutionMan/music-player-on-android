@@ -2,8 +2,10 @@ package com.example.myapplication.ui.components
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -15,6 +17,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.data.Track
@@ -22,6 +25,7 @@ import com.example.myapplication.ui.icons.AppIcons
 
 /**
  * 专辑封面内容（纯视觉，无定位）。
+ * 有真实封面图（网易云）时显示图片，否则显示渐变 + 音符图标。
  * 由外部控制大小和透明度。
  */
 @Composable
@@ -40,13 +44,23 @@ fun ArtworkContent(
             .clip(RoundedCornerShape(cornerRadius))
             .background(Brush.linearGradient(track.coverColors))
     ) {
-        val iconSize = (size * 0.28f).coerceIn(20.dp, 84.dp)
-        Icon(
-            imageVector = AppIcons.MusicNote,
-            contentDescription = null,
-            tint = Color.White.copy(alpha = 0.92f),
-            modifier = Modifier.size(iconSize)
-        )
+        val art = track.artwork
+        if (art != null) {
+            Image(
+                bitmap = art,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            val iconSize = (size * 0.28f).coerceIn(20.dp, 84.dp)
+            Icon(
+                imageVector = AppIcons.MusicNote,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.92f),
+                modifier = Modifier.size(iconSize)
+            )
+        }
     }
 }
 
